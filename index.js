@@ -8,6 +8,12 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const PORT = process.env.PORT || 3000;
 let latestAnnouncement = { message: "", author: "", timestamp: "" };
+const allowedUsers = [
+  "598460565387476992", // replace with real Discord IDs
+  "1272478153201422420",
+  "1356133222752190605",
+  "1279868613628657860"
+];
 const commands = [
   {
     name: "announcement",
@@ -36,6 +42,10 @@ client.once("ready", () => {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName === "announcement") {
+    const userId = interaction.user.id;
+    if (!allowedUsers.includes(userId)) {
+      return interaction.reply({ content: "You are not allowed to send announcements.", ephemeral: true });
+    }
     const msg = interaction.options.getString("message");
     latestAnnouncement = {
       message: msg,
