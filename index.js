@@ -4,28 +4,19 @@ const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v10");
 
 const app = express();
-app.use(express.json());
+app.use(express.json()); // IMPORTANT for POST body parsing
 
-// ENV
+// ENV VARIABLES
 const TOKEN = process.env.BOT_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const PORT = process.env.PORT || 3000;
 
-// STORED DATA (FIXED)
-let latestAnnouncement = {
-  message: "",
-  author: "",
-  timestamp: ""
-};
+// STORED DATA
+let latestAnnouncement = { message: "", author: "", timestamp: "" };
+let lastJoinRequest = { jobId: "", author: "", timestamp: "" };
 
-let lastJoinRequest = {
-  jobId: "",
-  author: "",
-  timestamp: ""
-};
-
-// Permission list
+// ALLOWED DISCORD USER IDS
 const allowedUsers = [
   "598460565387476992",
   "1272478153201422420",
@@ -33,58 +24,61 @@ const allowedUsers = [
   "1279868613628657860"
 ];
 
-// Slash commands
+// SLASH COMMANDS
 const commands = [
   {
     name: "announcement",
-    description: "Send announcement to Roblox players",
+    description: "Send announcement to Roblox",
     options: [
       {
         name: "message",
         type: 3,
         description: "Announcement text",
-        required: true
-      }
-    ]
+        required: true,
+      },
+    ],
   },
   {
     name: "join",
-    description: "Teleport players to a specific JobId",
+    description: "Teleport all Roblox clients to a JobId",
     options: [
       {
         name: "jobid",
         type: 3,
-        description: "The target JobId",
-        required: true
-      }
-    ]
+        description: "JobId to teleport to",
+        required: true,
+      },
+    ],
+  },
+  {
+    name: "clear",
+    description: "Clear stored announcement + jobId"
   }
 ];
 
-// Register commands
+// REGISTER SLASH COMMANDS
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
-  await rest.put(
-    Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-    { body: commands }
-  );
-
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
+    body: commands,
+  });
   console.log("Slash commands registered.");
 }
 
-// Discord bot init
+// DISCORD CLIENT INIT
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log("Bot online:", client.user.tag);
 });
 
+// SLASH COMMAND HANDLER
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   const userId = interaction.user.id;
 
-  // Permission check
+  // PERMISSION CHECK
   if (!allowedUsers.includes(userId)) {
     return interaction.reply({
       content: "❌ You are not allowed to use this command.",
@@ -92,7 +86,10 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 
-  // /announcement
+  // ALWAYS REPLY IMMEDIATELY — FIXES Unknown Interaction
+  await interaction.deferReply({ ephemeral: true });
+
+  // ANNOUNCEMENT COMMAND
   if (interaction.commandName === "announcement") {
     const msg = interaction.options.getString("message");
 
@@ -102,15 +99,11 @@ client.on("interactionCreate", async (interaction) => {
       timestamp: Date.now().toString()
     };
 
-    await interaction.reply({
-      content: `📢 Announcement sent:\n\n**${msg}**`,
-      ephemeral: true
-    });
-
-    console.log("Announcement:", msg);
+    await interaction.editReply(`📢 Announcement sent:\n\n**${msg}**`);
+    return;
   }
 
-  // /join
+  // JOIN COMMAND
   if (interaction.commandName === "join") {
     const jobId = interaction.options.getString("jobid");
 
@@ -120,12 +113,19 @@ client.on("interactionCreate", async (interaction) => {
       timestamp: Date.now().toString()
     };
 
-    await interaction.reply({
-      content: `🔄 Teleport request sent.\nJobId: **${jobId}**`,
-      ephemeral: true
-    });
+    await interaction.editReply(
+      `🔄 Teleport request sent.\nJobId: **${jobId}**`
+    );
+    return;
+  }
 
-    console.log("Join request:", jobId);
+  // CLEAR COMMAND
+  if (interaction.commandName === "clear") {
+    latestAnnouncement = { message: "", author: "", timestamp: "" };
+    lastJoinRequest = { jobId: "", author: "", timestamp: "" };
+
+    await interaction.editReply("🧹 Cleared announcement + join data.");
+    return;
   }
 });
 
@@ -134,24 +134,24 @@ app.get("/announcement", (req, res) => {
   res.json(latestAnnouncement);
 });
 
-app.post("/announcement", (req, res) => {
-  // Roblox sends { clear: true }
-  latestAnnouncement = { message: "", author: "", timestamp: "" };
-  res.json({ status: "cleared" });
-});
-
 app.get("/join", (req, res) => {
   res.json(lastJoinRequest);
 });
 
+// CLEAR JOBID FROM ROBLOX AFTER TELEPORT
 app.post("/join", (req, res) => {
-  // Roblox sends { clear: true }
-  lastJoinRequest = { jobId: "", author: "", timestamp: "" };
+  lastJoinRequest.jobId = "";
   res.json({ status: "cleared" });
 });
 
-// Start server
-app.listen(PORT, () => console.log(`🌐 API running on port ${PORT}`));
+// CLEAR ANNOUNCEMENT FROM ROBLOX AFTER SHOWING
+app.post("/announcement", (req, res) => {
+  latestAnnouncement.message = "";
+  res.json({ status: "cleared" });
+});
 
-// Start Discord bot
+app.listen(PORT, () =>
+  console.log(`🌐 API running on port ${PORT}`)
+);
+
 registerCommands().then(() => client.login(TOKEN));
