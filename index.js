@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 // STORED DATA
 let lastJoinRequest = { jobId: "", author: "", timestamp: "" };
 let lastAnnouncement = { message: "", author: "", timestamp: "" };
+let lastMessage = { message: "", author: "", timestamp: "" };
 
 const allowedUsers = [
   "598460565387476992",
@@ -41,6 +42,18 @@ const commands = [
         name: "message",
         type: 3,
         description: "Message to notify",
+        required: true,
+      },
+    ],
+  },
+  {
+    name: "message",
+    description: "Send a popup message with Join/Decline buttons",
+    options: [
+      {
+        name: "message",
+        type: 3,
+        description: "Popup message text",
         required: true,
       },
     ],
@@ -107,6 +120,24 @@ client.on("interactionCreate", async (interaction) => {
 
     console.log("New announcement:", message);
   }
+
+  // MESSAGE COMMAND (popup GUI)
+  if (interaction.commandName === "message") {
+    const message = interaction.options.getString("message");
+
+    lastMessage = {
+      message,
+      author: interaction.user.tag,
+      timestamp: new Date().toISOString(),
+    };
+
+    await interaction.reply({
+      content: `Popup message sent: **${message}**`,
+      ephemeral: true,
+    });
+
+    console.log("New popup message:", message);
+  }
 });
 
 // JOIN endpoint (NO RESET ANYMORE)
@@ -117,6 +148,11 @@ app.get("/join", (req, res) => {
 // ANNOUNCEMENT endpoint (NO RESET)
 app.get("/announcement", (req, res) => {
   res.json(lastAnnouncement);
+});
+
+// MESSAGE endpoint (NO RESET)
+app.get("/message", (req, res) => {
+  res.json(lastMessage);
 });
 
 app.listen(PORT, () =>
