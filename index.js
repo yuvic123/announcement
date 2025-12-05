@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 // STORED DATA
 let lastJoinRequest = { jobId: "", author: "", timestamp: "" };
 let lastAnnouncement = { message: "", author: "", timestamp: "" };
-let lastMessage = { message: "", author: "", timestamp: "" };
+let lastMessage = { message: "", jobId: "", author: "", timestamp: "" };
 
 const allowedUsers = [
   "598460565387476992",
@@ -54,6 +54,12 @@ const commands = [
         name: "message",
         type: 3,
         description: "Popup message text",
+        required: true,
+      },
+      {
+        name: "jobid",
+        type: 3,
+        description: "JobId to join if clicked",
         required: true,
       },
     ],
@@ -124,19 +130,21 @@ client.on("interactionCreate", async (interaction) => {
   // MESSAGE COMMAND (popup GUI)
   if (interaction.commandName === "message") {
     const message = interaction.options.getString("message");
+    const jobId = interaction.options.getString("jobid");
 
     lastMessage = {
       message,
+      jobId,
       author: interaction.user.tag,
       timestamp: new Date().toISOString(),
     };
 
     await interaction.reply({
-      content: `Popup message sent: **${message}**`,
+      content: `Popup message sent: **${message}** (JobId: ${jobId})`,
       ephemeral: true,
     });
 
-    console.log("New popup message:", message);
+    console.log("New popup message:", message, "JobId:", jobId);
   }
 });
 
