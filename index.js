@@ -9,6 +9,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const GUILD_ID = process.env.GUILD_ID;
 const PORT = process.env.PORT || 3000;
 
+// STORED DATA
 let lastJoinRequest = { jobId: "", author: "", timestamp: "" };
 let lastAnnouncement = { message: "", author: "", timestamp: "" };
 
@@ -108,14 +109,12 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-// JOIN endpoint (auto-resets)
+// JOIN endpoint (NO RESET ANYMORE)
 app.get("/join", (req, res) => {
-  const temp = { ...lastJoinRequest };
-  lastJoinRequest = { jobId: "", author: "", timestamp: "" };
-  res.json(temp);
+  res.json(lastJoinRequest);
 });
 
-// ANNOUNCEMENT endpoint (NO RESET ANYMORE)
+// ANNOUNCEMENT endpoint (NO RESET)
 app.get("/announcement", (req, res) => {
   res.json(lastAnnouncement);
 });
